@@ -1,5 +1,5 @@
-import { teachersSchema } from "@academic/teachers/infra/schemas/teacher.schema";
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { teachersSchema } from "./teacher.schema";
 
 export const usersSchema = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
