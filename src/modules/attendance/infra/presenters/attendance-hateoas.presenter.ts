@@ -27,20 +27,20 @@ export class AttendanceHateoasPresenter {
     const selfHref = `${root}/student/${studentId}/class-offering/${classOfferingId}`;
 
     return {
+      attendances: items.map((item) => this.collectionItem(item)),
       _links: {
         self: { href: selfHref, title: "This collection" },
-        "attendances-by-class-offering": {
+        "attendances:by-class-offering": {
           href: `${root}/class-offering/${classOfferingId}`,
           title: "All attendances for this class offering",
         },
-        register: {
+        "attendance:create": {
           href: root,
           method: "POST",
           type: "application/json",
           title: "Register a new attendance",
         },
       } satisfies HalLinks,
-      attendances: items.map((item) => this.embedAttendance(baseUrl, item)),
     };
   }
 
@@ -53,34 +53,54 @@ export class AttendanceHateoasPresenter {
     const selfHref = `${root}/class-offering/${classOfferingId}`;
 
     return {
+      attendances: items.map((item) => this.collectionItem(item)),
       _links: {
         self: { href: selfHref, title: "This collection" },
-        register: {
+        "attendance:by-id": {
+          href: `${root}/{attendanceId}`,
+          title: "Get one attendance by id",
+        },
+        "attendance:create": {
           href: root,
           method: "POST",
           type: "application/json",
           title: "Register a new attendance",
         },
       } satisfies HalLinks,
-      attendances: items.map((item) => this.embedAttendance(baseUrl, item)),
     };
   }
 
-  registrationResult(
+  creationResult(baseUrl: string, item: AttendanceDto) {
+    return this.embedAttendance(baseUrl, item);
+  }
+
+  wrapOne(baseUrl: string, item: AttendanceDto) {
+    return this.embedAttendance(baseUrl, item);
+  }
+
+  deletionResult(
     baseUrl: string,
     body: { studentId: string; classOfferingId: string },
   ) {
     const root = this.attendancesRoot(baseUrl);
     return {
+      studentId: body.studentId,
+      classOfferingId: body.classOfferingId,
       _links: {
         self: { href: root, title: "Attendances collection" },
-        "attendances-for-student-in-offering": {
+        "attendances:by-student-and-class-offering": {
           href: `${root}/student/${body.studentId}/class-offering/${body.classOfferingId}`,
           title: "Attendances for this student in this offering",
         },
-        "attendances-by-class-offering": {
+        "attendances:by-class-offering": {
           href: `${root}/class-offering/${body.classOfferingId}`,
           title: "All attendances for this class offering",
+        },
+        "attendance:create": {
+          href: root,
+          method: "POST",
+          type: "application/json",
+          title: "Register a new attendance",
         },
       } satisfies HalLinks,
     };
@@ -88,6 +108,7 @@ export class AttendanceHateoasPresenter {
 
   private embedAttendance(baseUrl: string, item: AttendanceDto) {
     const root = this.attendancesRoot(baseUrl);
+    const attendanceId = item.id ?? "{attendanceId}";
     return {
       id: item.id,
       studentId: item.studentId,
@@ -96,20 +117,45 @@ export class AttendanceHateoasPresenter {
       status: item.status,
       _links: {
         self: {
-          href: `${root}/student/${item.studentId}/class-offering/${item.classOfferingId}`,
-          title: "Student attendances in this offering",
+          href: `${root}/${attendanceId}`,
+          title: "Get this attendance",
         },
-        "attendances-by-class-offering": {
+        "attendances:by-class-offering": {
           href: `${root}/class-offering/${item.classOfferingId}`,
           title: "All attendances for this class offering",
         },
-        register: {
+        "attendances:by-student-and-class-offering": {
+          href: `${root}/student/${item.studentId}/class-offering/${item.classOfferingId}`,
+          title: "Attendances for this student in this offering",
+        },
+        "attendance:update": {
+          href: `${root}/${attendanceId}`,
+          method: "PUT",
+          type: "application/json",
+          title: "Update this attendance",
+        },
+        "attendance:delete": {
+          href: `${root}/${attendanceId}`,
+          method: "DELETE",
+          title: "Delete this attendance",
+        },
+        "attendance:create": {
           href: root,
           method: "POST",
           type: "application/json",
           title: "Register attendance",
         },
       } satisfies HalLinks,
+    };
+  }
+
+  private collectionItem(item: AttendanceDto) {
+    return {
+      id: item.id,
+      studentId: item.studentId,
+      lessonId: item.lessonId,
+      classOfferingId: item.classOfferingId,
+      status: item.status,
     };
   }
 }

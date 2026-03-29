@@ -7,7 +7,7 @@ import {
   ATTENDANCE_REPOSITORY,
   type AttendanceRepository,
 } from "@attendance/domain/repositories/attendance-repository.interface";
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 
 @Injectable()
 export class AttendanceService {
@@ -21,9 +21,51 @@ export class AttendanceService {
     lessonId: string;
     classOfferingId: string;
     status: AttendanceStatus;
-  }): Promise<void> {
+  }): Promise<AttendanceDto> {
     const attendance = Attendance.restore(dto);
-    await this.attendanceRepository.create(attendance!);
+    const created = await this.attendanceRepository.create(attendance!);
+    return AttendanceDto.from(created)!;
+  }
+
+  async findById(id: string): Promise<AttendanceDto> {
+    const record = await this.attendanceRepository.findById(id);
+    if (!record) {
+      throw new NotFoundException("Attendance not found");
+    }
+
+    return AttendanceDto.from(record)!;
+  }
+
+  async updateById(
+    id: string,
+    dto: {
+      studentId: string;
+      lessonId: string;
+      classOfferingId: string;
+      status: AttendanceStatus;
+    },
+  ): Promise<AttendanceDto> {
+    const record = await this.attendanceRepository.updateById(id, dto);
+    if (!record) {
+      throw new NotFoundException("Attendance not found");
+    }
+
+    return AttendanceDto.from(record)!;
+  }
+
+  async deleteById(id: string): Promise<{
+    studentId: string;
+    classOfferingId: string;
+  }> {
+    const deleted = await this.attendanceRepository.deleteById(id);
+    if (!deleted) {
+      throw new NotFoundException("Attendance not found");
+    }
+
+    return {
+      studentId: deleted.studentId,
+      classOfferingId: deleted.classOfferingId,
+    };
   }
 
   async findByStudentAndClassOffering(

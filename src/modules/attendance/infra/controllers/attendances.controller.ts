@@ -4,11 +4,14 @@ import { AttendanceHateoasPresenter } from "@attendance/infra/presenters/attenda
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
   Post,
+  Put,
   Req,
 } from "@nestjs/common";
 import { getApiBaseUrl } from "@shared/infra/hypermedia/base-url";
@@ -55,8 +58,15 @@ export class AttendancesController {
     );
   }
 
+  @Get(":id")
+  async findById(@Req() req: Request, @Param("id") id: string) {
+    const item = await this.attendanceService.findById(id);
+    return this.hateoas.wrapOne(getApiBaseUrl(req), item);
+  }
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Header("Content-Type", "application/json")
   async register(
     @Req() req: Request,
     @Body() body: {
@@ -66,7 +76,32 @@ export class AttendancesController {
       status: AttendanceStatus;
     },
   ) {
-    await this.attendanceService.register(body);
-    return this.hateoas.registrationResult(getApiBaseUrl(req), body);
+    const created = await this.attendanceService.register(body);
+    req.res?.setHeader(
+      "Location",
+      `${getApiBaseUrl(req)}/attendances/${created.id}`,
+    );
+    return this.hateoas.creationResult(getApiBaseUrl(req), created);
+  }
+
+  @Put(":id")
+  async updateById(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: {
+      studentId: string;
+      lessonId: string;
+      classOfferingId: string;
+      status: AttendanceStatus;
+    },
+  ) {
+    const item = await this.attendanceService.updateById(id, body);
+    return this.hateoas.wrapOne(getApiBaseUrl(req), item);
+  }
+
+  @Delete(":id")
+  async remove(@Req() req: Request, @Param("id") id: string) {
+    const ctx = await this.attendanceService.deleteById(id);
+    return this.hateoas.deletionResult(getApiBaseUrl(req), ctx);
   }
 }
