@@ -55,14 +55,22 @@ export class HateoasInterceptor implements NestInterceptor {
     );
   }
 
+  private paginationHref(request: Request, page: number, size: number): string {
+    const host = request.get("host") ?? "localhost";
+    const base = `${request.protocol}://${host}`;
+    const url = new URL(request.originalUrl, base);
+    url.searchParams.set("_page", String(page));
+    url.searchParams.set("_size", String(size));
+    return `${url.pathname}${url.search}`;
+  }
+
   private transformList(
     paginated: PaginatedResult<Record<string, unknown>>,
     options: HateoasListOptions,
     request: Request,
   ) {
-    const { data, total, page, limit } = paginated;
-    const totalPages = limit > 0 ? Math.ceil(total / limit) : 1;
-    const basePath = options.basePath ?? request.path;
+    const { data, total, page, size } = paginated;
+    const totalPages = size > 0 ? Math.ceil(total / size) : 1;
 
     const itemsWithLinks = data.map((item) => ({
       ...item,
@@ -73,35 +81,37 @@ export class HateoasInterceptor implements NestInterceptor {
       data: itemsWithLinks,
       meta: {
         totalItems: total,
-        itemsPerPage: limit,
+        itemsPerPage: size,
         currentPage: page,
         totalPages,
       },
       _links: {
         self: {
-          href: `${basePath}?page=${page}&limit=${limit}`,
+          href: this.paginationHref(request, page, size),
           method: "GET" as const,
         },
         next:
           page < totalPages
             ? {
-                href: `${basePath}?page=${page + 1}&limit=${limit}`,
+                href: this.paginationHref(request, page + 1, size),
                 method: "GET" as const,
               }
             : null,
         prev:
           page > 1
             ? {
-                href: `${basePath}?page=${page - 1}&limit=${limit}`,
+                href: this.paginationHref(request, page - 1, size),
                 method: "GET" as const,
               }
             : null,
-        first: { href: `${basePath}?page=1&limit=${limit}`, method: "GET" },
-        last: {
-          href: `${basePath}?page=${totalPages}&limit=${limit}`,
-          method: "GET",
+        first: {
+          href: this.paginationHref(request, 1, size),
+          method: "GET" as const,
         },
-        create: { href: basePath, method: "POST" },
+        last: {
+          href: this.paginationHref(request, totalPages, size),
+          method: "GET" as const,
+        },
       },
     };
   }

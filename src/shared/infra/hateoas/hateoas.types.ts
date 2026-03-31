@@ -7,12 +7,12 @@ export type LinksMap = Record<string, LinkDef | null>;
 
 export interface PaginationParams {
   page: number;
-  limit: number;
+  size: number;
 }
 
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
   page: number;
-  limit: number;
+  size: number;
 }

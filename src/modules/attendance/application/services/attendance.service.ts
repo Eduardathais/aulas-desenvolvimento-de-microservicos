@@ -45,75 +45,62 @@ export class AttendanceService {
       classOfferingId: string;
       status: AttendanceStatus;
     },
-  ): Promise<AttendanceDto> {
+  ): Promise<void> {
     const record = await this.attendanceRepository.updateById(id, dto);
     if (!record) {
       throw new NotFoundException("Attendance not found");
     }
-
-    return AttendanceDto.from(record)!;
   }
 
-  async deleteById(id: string): Promise<{
-    studentId: string;
-    classOfferingId: string;
-  }> {
+  async deleteById(id: string): Promise<void> {
     const deleted = await this.attendanceRepository.deleteById(id);
     if (!deleted) {
       throw new NotFoundException("Attendance not found");
     }
-
-    return {
-      studentId: deleted.studentId,
-      classOfferingId: deleted.classOfferingId,
-    };
   }
 
-  async findByStudentAndClassOfferingPaginated(
-    studentId: string,
-    classOfferingId: string,
-    page: number,
-    limit: number,
-  ): Promise<PaginatedResult<AttendanceDto>> {
-    const total =
-      await this.attendanceRepository.countByStudentAndClassOffering(
-        studentId,
-        classOfferingId,
-      );
-    const offset = (page - 1) * limit;
-    const records =
-      await this.attendanceRepository.findByStudentAndClassOfferingPage(
-        studentId,
-        classOfferingId,
-        offset,
-        limit,
-      );
-    return {
-      data: records.map((r) => AttendanceDto.from(r)!),
-      total,
-      page,
-      limit,
-    };
-  }
+  async findAllPaginated(params: {
+    classOfferingId: string;
+    studentId?: string;
+    page: number;
+    size: number;
+  }): Promise<PaginatedResult<AttendanceDto>> {
+    const { classOfferingId, studentId, page, size } = params;
+    const offset = (page - 1) * size;
 
-  async findByClassOfferingPaginated(
-    classOfferingId: string,
-    page: number,
-    limit: number,
-  ): Promise<PaginatedResult<AttendanceDto>> {
+    if (studentId) {
+      const total =
+        await this.attendanceRepository.countByStudentAndClassOffering(
+          studentId,
+          classOfferingId,
+        );
+      const records =
+        await this.attendanceRepository.findByStudentAndClassOfferingPage(
+          studentId,
+          classOfferingId,
+          offset,
+          size,
+        );
+      return {
+        data: records.map((r) => AttendanceDto.from(r)!),
+        total,
+        page,
+        size,
+      };
+    }
+
     const total =
       await this.attendanceRepository.countByClassOffering(classOfferingId);
-    const offset = (page - 1) * limit;
     const records = await this.attendanceRepository.findByClassOfferingPage(
       classOfferingId,
       offset,
-      limit,
+      size,
     );
     return {
       data: records.map((r) => AttendanceDto.from(r)!),
       total,
       page,
-      limit,
+      size,
     };
   }
 }
