@@ -6,7 +6,7 @@ import type { AttendanceRepository } from "@attendance/domain/repositories/atten
 import { attendancesSchema } from "@attendance/infra/schemas/attendance.schema";
 import { Injectable } from "@nestjs/common";
 import { DrizzleService } from "@shared/infra/database/drizzle.service";
-import { and, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 
 @Injectable()
 export class DrizzleAttendanceRepository implements AttendanceRepository {
@@ -60,6 +60,80 @@ export class DrizzleAttendanceRepository implements AttendanceRepository {
       .select()
       .from(attendancesSchema)
       .where(eq(attendancesSchema.classOfferingId, classOfferingId));
+
+    return rows.map(
+      (row) =>
+        Attendance.restore({
+          ...row,
+          status: row.status as AttendanceStatus,
+        })!,
+    );
+  }
+
+  async countByStudentAndClassOffering(
+    studentId: string,
+    classOfferingId: string,
+  ): Promise<number> {
+    const [row] = await this.drizzleService.db
+      .select({ c: count() })
+      .from(attendancesSchema)
+      .where(
+        and(
+          eq(attendancesSchema.studentId, studentId),
+          eq(attendancesSchema.classOfferingId, classOfferingId),
+        ),
+      );
+    return Number(row?.c ?? 0);
+  }
+
+  async findByStudentAndClassOfferingPage(
+    studentId: string,
+    classOfferingId: string,
+    offset: number,
+    limit: number,
+  ): Promise<Attendance[]> {
+    const rows = await this.drizzleService.db
+      .select()
+      .from(attendancesSchema)
+      .where(
+        and(
+          eq(attendancesSchema.studentId, studentId),
+          eq(attendancesSchema.classOfferingId, classOfferingId),
+        ),
+      )
+      .orderBy(desc(attendancesSchema.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return rows.map(
+      (row) =>
+        Attendance.restore({
+          ...row,
+          status: row.status as AttendanceStatus,
+        })!,
+    );
+  }
+
+  async countByClassOffering(classOfferingId: string): Promise<number> {
+    const [row] = await this.drizzleService.db
+      .select({ c: count() })
+      .from(attendancesSchema)
+      .where(eq(attendancesSchema.classOfferingId, classOfferingId));
+    return Number(row?.c ?? 0);
+  }
+
+  async findByClassOfferingPage(
+    classOfferingId: string,
+    offset: number,
+    limit: number,
+  ): Promise<Attendance[]> {
+    const rows = await this.drizzleService.db
+      .select()
+      .from(attendancesSchema)
+      .where(eq(attendancesSchema.classOfferingId, classOfferingId))
+      .orderBy(desc(attendancesSchema.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     return rows.map(
       (row) =>

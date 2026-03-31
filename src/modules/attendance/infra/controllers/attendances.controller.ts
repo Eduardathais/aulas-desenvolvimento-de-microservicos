@@ -1,72 +1,98 @@
+import { AttendanceDto } from "@attendance/application/dto/attendance.dto";
 import { AttendanceService } from "@attendance/application/services/attendance.service";
 import { AttendanceStatus } from "@attendance/domain/models/attendance.entity";
-import { AttendanceHateoasPresenter } from "@attendance/infra/presenters/attendance-hateoas.presenter";
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
-  Header,
   HttpCode,
   HttpStatus,
   Param,
+  ParseIntPipe,
   Post,
   Put,
+  Query,
   Req,
 } from "@nestjs/common";
+import { HateoasItem, HateoasList, type LinksMap } from "@shared/infra/hateoas";
 import { getApiBaseUrl } from "@shared/infra/hypermedia/base-url";
 import type { Request } from "express";
 
+function attendanceItemLinks(item: AttendanceDto): LinksMap {
+  const id = item.id;
+  if (!id) {
+    return {
+      "attendance:create": { href: "/attendances", method: "POST" },
+    };
+  }
+
+  return {
+    self: { href: `/attendances/${id}`, method: "GET" },
+    update: { href: `/attendances/${id}`, method: "PUT" },
+    delete: { href: `/attendances/${id}`, method: "DELETE" },
+    "attendances:by-class-offering": {
+      href: `/attendances/class-offering/${item.classOfferingId}`,
+      method: "GET",
+    },
+    "attendances:by-student-and-class-offering": {
+      href: `/attendances/student/${item.studentId}/class-offering/${item.classOfferingId}`,
+      method: "GET",
+    },
+    "attendance:create": { href: "/attendances", method: "POST" },
+  };
+}
+
 @Controller("attendances")
 export class AttendancesController {
-  constructor(
-    private readonly attendanceService: AttendanceService,
-    private readonly hateoas: AttendanceHateoasPresenter,
-  ) {}
+  constructor(private readonly attendanceService: AttendanceService) {}
 
   @Get("student/:studentId/class-offering/:classOfferingId")
+  @HateoasList<AttendanceDto>({
+    itemLinks: attendanceItemLinks,
+  })
   async findByStudent(
-    @Req() req: Request,
     @Param("studentId") studentId: string,
     @Param("classOfferingId") classOfferingId: string,
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("limit", new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ) {
-    const baseUrl = getApiBaseUrl(req);
-    const items = await this.attendanceService.findByStudentAndClassOffering(
+    return this.attendanceService.findByStudentAndClassOfferingPaginated(
       studentId,
       classOfferingId,
-    );
-    return this.hateoas.wrapCollectionByStudentAndClassOffering(
-      baseUrl,
-      studentId,
-      classOfferingId,
-      items,
+      page,
+      limit,
     );
   }
 
   @Get("class-offering/:classOfferingId")
+  @HateoasList<AttendanceDto>({
+    itemLinks: attendanceItemLinks,
+  })
   async findByClassOffering(
-    @Req() req: Request,
     @Param("classOfferingId") classOfferingId: string,
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("limit", new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ) {
-    const baseUrl = getApiBaseUrl(req);
-    const items =
-      await this.attendanceService.findByClassOffering(classOfferingId);
-    return this.hateoas.wrapCollectionByClassOffering(
-      baseUrl,
+    return this.attendanceService.findByClassOfferingPaginated(
       classOfferingId,
-      items,
+      page,
+      limit,
     );
   }
 
   @Get(":id")
-  async findById(@Req() req: Request, @Param("id") id: string) {
-    const item = await this.attendanceService.findById(id);
-    return this.hateoas.wrapOne(getApiBaseUrl(req), item);
+  @HateoasItem<AttendanceDto>({
+    basePath: "/attendances",
+    itemLinks: attendanceItemLinks,
+  })
+  async findById(@Param("id") id: string) {
+    return this.attendanceService.findById(id);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Header("Content-Type", "application/json")
   async register(
     @Req() req: Request,
     @Body() body: {
@@ -81,12 +107,11 @@ export class AttendancesController {
       "Location",
       `${getApiBaseUrl(req)}/attendances/${created.id}`,
     );
-    return this.hateoas.creationResult(getApiBaseUrl(req), created);
+    return created;
   }
 
   @Put(":id")
   async updateById(
-    @Req() req: Request,
     @Param("id") id: string,
     @Body() body: {
       studentId: string;
@@ -95,13 +120,11 @@ export class AttendancesController {
       status: AttendanceStatus;
     },
   ) {
-    const item = await this.attendanceService.updateById(id, body);
-    return this.hateoas.wrapOne(getApiBaseUrl(req), item);
+    return this.attendanceService.updateById(id, body);
   }
 
   @Delete(":id")
-  async remove(@Req() req: Request, @Param("id") id: string) {
-    const ctx = await this.attendanceService.deleteById(id);
-    return this.hateoas.deletionResult(getApiBaseUrl(req), ctx);
+  async remove(@Param("id") id: string) {
+    return this.attendanceService.deleteById(id);
   }
 }

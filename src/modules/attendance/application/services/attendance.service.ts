@@ -8,6 +8,7 @@ import {
   type AttendanceRepository,
 } from "@attendance/domain/repositories/attendance-repository.interface";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import type { PaginatedResult } from "@shared/infra/hateoas";
 
 @Injectable()
 export class AttendanceService {
@@ -68,21 +69,51 @@ export class AttendanceService {
     };
   }
 
-  async findByStudentAndClassOffering(
+  async findByStudentAndClassOfferingPaginated(
     studentId: string,
     classOfferingId: string,
-  ): Promise<AttendanceDto[]> {
-    const records =
-      await this.attendanceRepository.findByStudentAndClassOffering(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<AttendanceDto>> {
+    const total =
+      await this.attendanceRepository.countByStudentAndClassOffering(
         studentId,
         classOfferingId,
       );
-    return records.map((r) => AttendanceDto.from(r)!);
+    const offset = (page - 1) * limit;
+    const records =
+      await this.attendanceRepository.findByStudentAndClassOfferingPage(
+        studentId,
+        classOfferingId,
+        offset,
+        limit,
+      );
+    return {
+      data: records.map((r) => AttendanceDto.from(r)!),
+      total,
+      page,
+      limit,
+    };
   }
 
-  async findByClassOffering(classOfferingId: string): Promise<AttendanceDto[]> {
-    const records =
-      await this.attendanceRepository.findByClassOffering(classOfferingId);
-    return records.map((r) => AttendanceDto.from(r)!);
+  async findByClassOfferingPaginated(
+    classOfferingId: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<AttendanceDto>> {
+    const total =
+      await this.attendanceRepository.countByClassOffering(classOfferingId);
+    const offset = (page - 1) * limit;
+    const records = await this.attendanceRepository.findByClassOfferingPage(
+      classOfferingId,
+      offset,
+      limit,
+    );
+    return {
+      data: records.map((r) => AttendanceDto.from(r)!),
+      total,
+      page,
+      limit,
+    };
   }
 }

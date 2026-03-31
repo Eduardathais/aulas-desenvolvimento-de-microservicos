@@ -1,7 +1,6 @@
 import { AttendanceService } from "@attendance/application/services/attendance.service";
 import { ATTENDANCE_REPOSITORY } from "@attendance/domain/repositories/attendance-repository.interface";
 import { AttendancesController } from "@attendance/infra/controllers/attendances.controller";
-import { AttendanceHateoasPresenter } from "@attendance/infra/presenters/attendance-hateoas.presenter";
 import { DrizzleAttendanceRepository } from "@attendance/infra/repositories/drizzle-attendance.repository";
 import { Module } from "@nestjs/common";
 import { SharedModule } from "@shared/shared.module";
@@ -11,7 +10,6 @@ import { SharedModule } from "@shared/shared.module";
   controllers: [AttendancesController],
   providers: [
     AttendanceService,
-    AttendanceHateoasPresenter,
     DrizzleAttendanceRepository,
     {
       provide: ATTENDANCE_REPOSITORY,

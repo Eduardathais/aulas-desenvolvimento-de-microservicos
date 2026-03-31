@@ -20,4 +20,20 @@ export interface AttendanceRepository {
     classOfferingId: string,
   ): Promise<Attendance[]>;
   findByClassOffering(classOfferingId: string): Promise<Attendance[]>;
+  countByStudentAndClassOffering(
+    studentId: string,
+    classOfferingId: string,
+  ): Promise<number>;
+  findByStudentAndClassOfferingPage(
+    studentId: string,
+    classOfferingId: string,
+    offset: number,
+    limit: number,
+  ): Promise<Attendance[]>;
+  countByClassOffering(classOfferingId: string): Promise<number>;
+  findByClassOfferingPage(
+    classOfferingId: string,
+    offset: number,
+    limit: number,
+  ): Promise<Attendance[]>;
 }
