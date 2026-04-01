@@ -17,6 +17,17 @@ import {
   Query,
   Req,
 } from "@nestjs/common";
+import {
+  ApiBadRequestResponse,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from "@nestjs/swagger";
 import { HateoasItem, HateoasList, type LinksMap } from "@shared/infra/hateoas";
 import { getApiBaseUrl } from "@shared/infra/hypermedia/base-url";
 import type { Request } from "express";
@@ -47,6 +58,7 @@ function attendanceItemLinks(item: AttendanceDto): LinksMap {
   };
 }
 
+@ApiTags("attendances")
 @Controller("attendances")
 export class AttendancesController {
   constructor(private readonly attendanceService: AttendanceService) {}
@@ -55,6 +67,36 @@ export class AttendancesController {
   @HateoasList<AttendanceDto>({
     itemLinks: attendanceItemLinks,
   })
+  @ApiOperation({ summary: "Listar presenças (filtros e paginação)" })
+  @ApiQuery({
+    name: "class_offering_id",
+    required: true,
+    type: String,
+    description: "UUID da oferta de disciplina",
+  })
+  @ApiQuery({
+    name: "student_id",
+    required: false,
+    type: String,
+    description: "UUID do aluno (filtro opcional)",
+  })
+  @ApiQuery({
+    name: "_page",
+    required: false,
+    type: Number,
+    description: "Página (padrão 1)",
+  })
+  @ApiQuery({
+    name: "_size",
+    required: false,
+    type: Number,
+    description: "Itens por página (padrão 10, máx. 100)",
+  })
+  @ApiOkResponse({
+    description:
+      "Lista paginada com data, meta e _links (HATEOAS); cada item inclui _links",
+  })
+  @ApiBadRequestResponse({ description: "Parâmetros inválidos ou faltando" })
   async findAll(@Query() query: ListAttendancesQueryDto) {
     return this.attendanceService.findAllPaginated({
       classOfferingId: query.class_offering_id,
@@ -69,12 +111,26 @@ export class AttendancesController {
     basePath: ATTENDANCES,
     itemLinks: attendanceItemLinks,
   })
+  @ApiOperation({ summary: "Buscar presença por ID" })
+  @ApiParam({ name: "id", format: "uuid", description: "UUID da presença" })
+  @ApiOkResponse({
+    type: AttendanceDto,
+    description: "Recurso com _links (HATEOAS)",
+  })
+  @ApiNotFoundResponse({ description: "Presença não encontrada" })
+  @ApiBadRequestResponse({ description: "ID inválido" })
   async findById(@Param("id", new ParseUUIDPipe()) id: string) {
     return this.attendanceService.findById(id);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: "Registrar presença",
+    description: "Resposta inclui header Location com o URI do recurso criado",
+  })
+  @ApiCreatedResponse({ type: AttendanceDto })
+  @ApiBadRequestResponse({ description: "Body inválido" })
   async register(@Req() req: Request, @Body() body: CreateAttendanceDto) {
     const created = await this.attendanceService.register(body);
     req.res?.setHeader(
@@ -86,6 +142,11 @@ export class AttendancesController {
 
   @Put(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Atualizar presença" })
+  @ApiParam({ name: "id", format: "uuid", description: "UUID da presença" })
+  @ApiNoContentResponse({ description: "Presença atualizada" })
+  @ApiNotFoundResponse({ description: "Presença não encontrada" })
+  @ApiBadRequestResponse({ description: "Body ou ID inválido" })
   async updateById(
     @Param("id", new ParseUUIDPipe()) id: string,
     @Body() body: UpdateAttendanceDto,
@@ -95,6 +156,11 @@ export class AttendancesController {
 
   @Delete(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Remover presença" })
+  @ApiParam({ name: "id", format: "uuid", description: "UUID da presença" })
+  @ApiNoContentResponse({ description: "Presença removida" })
+  @ApiNotFoundResponse({ description: "Presença não encontrada" })
+  @ApiBadRequestResponse({ description: "ID inválido" })
   async remove(@Param("id", new ParseUUIDPipe()) id: string) {
     await this.attendanceService.deleteById(id);
   }
