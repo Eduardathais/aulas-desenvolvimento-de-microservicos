@@ -1,17 +1,17 @@
 import { AttendanceDto } from "@attendance/application/dto/attendance.dto";
+import { CreateAttendanceDto } from "@attendance/application/dto/create-attendance.dto";
+import { ListAttendancesQueryDto } from "@attendance/application/dto/list-attendances-query.dto";
+import { UpdateAttendanceDto } from "@attendance/application/dto/update-attendance.dto";
 import { AttendanceService } from "@attendance/application/services/attendance.service";
-import { AttendanceStatus } from "@attendance/domain/models/attendance.entity";
 import {
-  BadRequestException,
   Body,
   Controller,
-  DefaultValuePipe,
   Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -55,21 +55,12 @@ export class AttendancesController {
   @HateoasList<AttendanceDto>({
     itemLinks: attendanceItemLinks,
   })
-  async findAll(
-    @Query("class_offering_id") classOfferingId: string | undefined,
-    @Query("student_id") studentId: string | undefined,
-    @Query("_page", new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query("_size", new DefaultValuePipe(10), ParseIntPipe) size: number,
-  ) {
-    if (!classOfferingId?.trim()) {
-      throw new BadRequestException("class_offering_id is required");
-    }
-
+  async findAll(@Query() query: ListAttendancesQueryDto) {
     return this.attendanceService.findAllPaginated({
-      classOfferingId: classOfferingId,
-      studentId: studentId?.trim() || undefined,
-      page,
-      size,
+      classOfferingId: query.class_offering_id,
+      studentId: query.student_id,
+      page: query._page,
+      size: query._size,
     });
   }
 
@@ -78,21 +69,13 @@ export class AttendancesController {
     basePath: ATTENDANCES,
     itemLinks: attendanceItemLinks,
   })
-  async findById(@Param("id") id: string) {
+  async findById(@Param("id", new ParseUUIDPipe()) id: string) {
     return this.attendanceService.findById(id);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async register(
-    @Req() req: Request,
-    @Body() body: {
-      studentId: string;
-      lessonId: string;
-      classOfferingId: string;
-      status: AttendanceStatus;
-    },
-  ) {
+  async register(@Req() req: Request, @Body() body: CreateAttendanceDto) {
     const created = await this.attendanceService.register(body);
     req.res?.setHeader(
       "Location",
@@ -104,20 +87,15 @@ export class AttendancesController {
   @Put(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
   async updateById(
-    @Param("id") id: string,
-    @Body() body: {
-      studentId: string;
-      lessonId: string;
-      classOfferingId: string;
-      status: AttendanceStatus;
-    },
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Body() body: UpdateAttendanceDto,
   ) {
     await this.attendanceService.updateById(id, body);
   }
 
   @Delete(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param("id") id: string) {
+  async remove(@Param("id", new ParseUUIDPipe()) id: string) {
     await this.attendanceService.deleteById(id);
   }
 }

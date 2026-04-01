@@ -1,8 +1,7 @@
 import { AttendanceDto } from "@attendance/application/dto/attendance.dto";
-import {
-  Attendance,
-  AttendanceStatus,
-} from "@attendance/domain/models/attendance.entity";
+import type { CreateAttendanceDto } from "@attendance/application/dto/create-attendance.dto";
+import type { UpdateAttendanceDto } from "@attendance/application/dto/update-attendance.dto";
+import { Attendance } from "@attendance/domain/models/attendance.entity";
 import {
   ATTENDANCE_REPOSITORY,
   type AttendanceRepository,
@@ -17,12 +16,7 @@ export class AttendanceService {
     private readonly attendanceRepository: AttendanceRepository,
   ) {}
 
-  async register(dto: {
-    studentId: string;
-    lessonId: string;
-    classOfferingId: string;
-    status: AttendanceStatus;
-  }): Promise<AttendanceDto> {
+  async register(dto: CreateAttendanceDto): Promise<AttendanceDto> {
     const attendance = Attendance.restore(dto);
     const created = await this.attendanceRepository.create(attendance!);
     return AttendanceDto.from(created)!;
@@ -37,15 +31,7 @@ export class AttendanceService {
     return AttendanceDto.from(record)!;
   }
 
-  async updateById(
-    id: string,
-    dto: {
-      studentId: string;
-      lessonId: string;
-      classOfferingId: string;
-      status: AttendanceStatus;
-    },
-  ): Promise<void> {
+  async updateById(id: string, dto: UpdateAttendanceDto): Promise<void> {
     const record = await this.attendanceRepository.updateById(id, dto);
     if (!record) {
       throw new NotFoundException("Attendance not found");
